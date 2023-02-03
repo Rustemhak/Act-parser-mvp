@@ -236,7 +236,7 @@ def get_info_from_text(path):
     data_for_df['Код метода работы'] = [int(data_for_df['Код метода работы'][0])]
 
     data_for_df = [[i + 1, kv[0], kv[1][0]] for i, kv in enumerate(data_for_df.items())]
-    return data_for_df
+    return data_for_df, table2, table3
     # # print(data_for_df1)
     # df1_7 = pd.DataFrame(data=data_for_df1)
     # df1_7.to_excel('first_result.xlsx')
