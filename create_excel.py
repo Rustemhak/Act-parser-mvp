@@ -95,8 +95,8 @@ def create_xlsx(path, data_samples, table2, table3):
     sheet[f"G{start_table3 + 3}"].alignment = Alignment(horizontal='center')
     merge_2_row(sheet, 2, 6, start_table3 + 3)
     merge_2_row(sheet, 9, 12, start_table3 + 3)
-
-    path_result = f'Таблицы/{path[:-3]}xlsx'
+    sheet['A1'] = 1.2
+    path_result = f'Акты_полные_таблицы/{path[:-3]}xlsx'
     os.makedirs(os.path.dirname(path_result), exist_ok=True)
     book.save(path_result)
     # book = openpyxl.load_workbook(path_result)
