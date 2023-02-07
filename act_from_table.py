@@ -73,6 +73,8 @@ def get_values_8_10(pdf_file):
     for i in idx_values:
         if tables[1][2][i] is not None:
             values_8_10.append([tables[1][2][i].strip()])
+        elif tables[1][2][i + 1] is not None:
+            values_8_10.append([tables[1][2][i + 1].strip()])
         else:
             logging.warning(f'Не найдено значение {dict_id_fields[i]} в акте {pdf_file}')
 
