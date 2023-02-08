@@ -24,12 +24,13 @@ class Match(object):
 class Extractor(object):
     def __init__(self, MAIN_FIELD, OTHER_FIELDS=None):
         self.left_parser = Parser(MAIN_FIELD, tokenizer=TOKENIZER)
-        self.right_parser = Parser(OTHER_FIELDS, tokenizer=TOKENIZER)
+        if OTHER_FIELDS is not None:
+            self.right_parser = Parser(OTHER_FIELDS, tokenizer=TOKENIZER)
 
     def __call__(self, line):
         """
         Извлекает значение параметра между названиями полей
-        :param line: строка, в кото
+        :param line: строка
         :return: значение параметра
         """
         left_matches = self.left_parser.findall(line)
@@ -97,12 +98,13 @@ def get_info_from_text(path):
         'Well',
         ['field_name', 'value']
     )
-    WELL = rule(rule(WELL_WORD, NUMERO_SIGN).interpretation(Well.field_name),
-                INT.interpretation(Well.value)).interpretation(Well)
+    WELL = rule(rule(WELL_WORD, NUMERO_SIGN).interpretation(Well.field_name)).interpretation(Well)
     # show_from_act(WELL, text_act)
-    result = get_field_value(WELL, text_act)
-    data_for_df1[result.field_name].append(result.value)
-    data_for_df1['№ Скважины'] = data_for_df1.pop('Скв №')
+    # result = get_field_value(WELL, text_act)
+    # data_for_df1[result.field_name].append(result.value)
+    # data_for_df1['№ Скважины'] = data_for_df1.pop('Скв №')
+    result = get_field_value_second(WELL, lines)
+    data_for_df1["№ Скважины"].append(result.value)
 
     #
     """
@@ -231,10 +233,10 @@ def get_info_from_text(path):
     data_for_df2, table2, table3 = get_values_8_10(path)
     data_for_df = data_for_df1 | data_for_df2
     # переведем числа в числовой тип данных
-    data_for_df['№ Скважины'] = [int(data_for_df['№ Скважины'][0])]
-    data_for_df['Код вида работы'] = [int(data_for_df['Код вида работы'][0])]
-    data_for_df['Код метода работы'] = [int(data_for_df['Код метода работы'][0])]
-
+    # data_for_df['№ Скважины'] = [int(data_for_df['№ Скважины'][0])]
+    # data_for_df['Код вида работы'] = [int(data_for_df['Код вида работы'][0])]
+    # data_for_df['Код метода работы'] = [int(data_for_df['Код метода работы'][0])]
+    data_for_df = dict((k, [int(v[0])]) if v[0].isdigit() else (k, v) for k, v in data_for_df.items())
     data_for_df = [[i + 1, kv[0], kv[1][0]] for i, kv in enumerate(data_for_df.items())]
     return data_for_df, table2, table3
     # # print(data_for_df1)
