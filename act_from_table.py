@@ -2,6 +2,8 @@ from pdf2docx import Converter
 import logging
 import re
 
+from merge_tables import merge_t
+
 logging.basicConfig(filename='myapp.log', filemode='w', level=logging.DEBUG)
 
 
@@ -52,6 +54,7 @@ def format_table(table):
 def get_values_8_10(pdf_file):
     cv = Converter(pdf_file)
     tables = cv.extract_tables()
+    tables = merge_t(tables)
     cv.close()
 
     # for table in tables:

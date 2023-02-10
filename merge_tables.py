@@ -15,26 +15,19 @@ def merge_t(tables: list) -> list:
     merge2 = False
 
     for table in tables:
-        print('----')
-        print(table[0])
-        print(header7, header16, header17)
-        print('----')
 
         for header in headers7:
             if len(table[0]) == 11 and header in table[0]:
-                print(header)
                 header7 = True
                 break
 
         for header in headers16:
             if header7 and len(table[0]) == 9 and header in table[0]:
-                print(header)
                 header16 = True
                 break
 
         for header in headers17:
             if header16 and header in table[0]:
-                print(header)
                 header17 = True
                 break
 
