@@ -12,6 +12,8 @@ def extract_materials(pdf_file):
     tables = cv.extract_tables()
     tables = merge_t(tables)
     cv.close()
+    # print('количество таблиц',len(tables))
+    # print(tables[5])
     tables_materials = tables[6]
     tables_materials = reformat_table_11_17(tables_materials)
     tables_materials = format_table(tables_materials)

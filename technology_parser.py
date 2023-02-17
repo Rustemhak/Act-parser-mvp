@@ -203,7 +203,8 @@ def get_MGSK(data, path):
             volume = fact_feature.value.replace(' ', '')
             volumes.append(volume)
             data[f'Объем закачки на {WHICH_STAGE[idx_stage]} стадии'].append(volume)
-        # elif  fact_feature.field_name == 'объём' and idx_stage  :
+        elif fact_feature.field_name == 'объём' and idx_stage == 1:
+            break
         elif fact_feature.field_name == 'ПАА':
             data[f'концентрация ПАА на {WHICH_STAGE[idx_stage]} стадии'].append(fact_feature.value)
         elif fact_feature.field_name == 'ПАВ':
