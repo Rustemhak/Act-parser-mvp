@@ -6,8 +6,8 @@ from yargy.predicates import is_capitalized, gte, lte, eq
 from collections import defaultdict
 import pandas as pd
 from yargy_utils import NUMERO_SIGN, INT, show_json, ADJF, SLASH, COLON, TOKENIZER, ADJS, DECIMAL, PERCENT
-from feature_volume_percent import extract_volumes_feature_percents, count_sum_volume
-from water_squeezing import extract_water_volumes
+from feature_volume_percent import extract_volumes_feature_percents, count_sum_volume, select_text_stages
+from water_squeezing import extract_water_volumes, extract_final_water_volumes
 
 
 class Match(object):
@@ -66,7 +66,7 @@ def get_field_value_second(my_rule, lines):
             return fact
 
 
-def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forward=3, checked=[]):
+def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forward=3, checked=None):
     parser = Parser(def_rule)
     extra_parser = Parser(extra_def_rule)
     idx_val = None
@@ -74,7 +74,7 @@ def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forwar
         line = line.strip()
         match = list(parser.findall(line))
         extra_match = list(extra_parser.findall(line))
-        if line is not None and len(line) and len(match) and len(extra_match):
+        if line is not None and len(line) and len(match) and len(extra_match) and i not in checked:
             idx_val = i
             break
     parser = Parser(val_rule)
@@ -83,7 +83,7 @@ def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forwar
         checked.append(idx_val)
     if idx_val is None:
         print()
-        return [], []
+        return [], [], []
     for idx in range(idx_val + 1, idx_val + idx_forward + 1):
         line = lines[idx].strip()
         match = list(parser.findall(line))
@@ -92,7 +92,8 @@ def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forwar
             fact_local.value = line.replace(fact_local.field_name, '').strip(' .')
             ## print('fact', fact)
             facts.append(fact_local)
-    return facts, checked
+    facts_volume_final = extract_water_volumes(lines[idx_val])
+    return facts, checked, facts_volume_final
 
 
 def get_field_by_prev_rule_with_value(def_rule, val_rules, lines, checked, idx_forward=1):
@@ -138,7 +139,7 @@ def get_MGSK(data, path):
     result = get_field_value_second(WELL, lines)
     data["Скважина"].append(result.value)
     # Скорости насыщения
-    SATURATION = morph_pipeline(['насытить'])
+    SATURATION = morph_pipeline(['насытить', 'продавить'])
     THROTTLE_RESPONSE = morph_pipeline(['приемистость'])
 
     Speed_Throttle_response = fact(
@@ -152,10 +153,9 @@ def get_MGSK(data, path):
         Speed_Throttle_response)
     print('path:', path)
     checked = []
-
-    facts_speed_throttle_response, checked = get_field_by_prev_rule(SATURATION, THROTTLE_RESPONSE,
-                                                                    SPEED_THROTTLE_RESPONSE,
-                                                                    lines)
+    facts_speed_throttle_response, checked, _ = get_field_by_prev_rule(SATURATION, THROTTLE_RESPONSE,
+                                                                       SPEED_THROTTLE_RESPONSE,
+                                                                       lines, checked=checked)
     if len(facts_speed_throttle_response) == 0:
         data["Комментарий"].append("Скорости не найдены - описание сильно отличается")
     # Приемистость скважины на 1-й скорости
@@ -186,6 +186,7 @@ def get_MGSK(data, path):
     концентрация СА (СКА) на второй стадии
     концентрация ХКК на второй стадии
     """
+    # i_beg_stage = 0
 
     facts_features = extract_volumes_feature_percents(text_act)
     WHICH_STAGE = ['первой', 'второй']
@@ -237,13 +238,13 @@ def get_MGSK(data, path):
     Объем продавки после первой фазы
     Объем финальной продавки
     """
-    facts_squeezing = extract_water_volumes(text_act)
     SQUEEZING_NAMES = ['Объем продавки после первой фазы',
                        'Объем финальной продавки']
-    print('количество продавок в тексте: ', len(facts_squeezing))
-    print(facts_squeezing)
-    for i, fact_squeezing in enumerate(facts_squeezing[:2]):
-        data[SQUEEZING_NAMES[i]].append(fact_squeezing.value)
+    i_sent_stages = select_text_stages(text_act)
+    if len(i_sent_stages) > 0:
+        facts_squeezing_after_first = extract_water_volumes(' '.join(lines[i_sent_stages[0]:i_sent_stages[-1]]))
+        if len(facts_squeezing_after_first) > 0:
+            data[SQUEEZING_NAMES[0]].append(facts_squeezing_after_first[0].value)
 
     """
     Вторые скорости
@@ -259,8 +260,18 @@ def get_MGSK(data, path):
     SPEED_INJECTION = rule(
         rule(NUMBER_SPEED, SPEED, COLON).interpretation(Speed_injection.field_name)).interpretation(
         Speed_injection)
-    facts_speed_injection, checked = get_field_by_prev_rule(INJECTION, THROTTLE_RESPONSE, SPEED_INJECTION, lines,
-                                                            checked=checked)
+    facts_speed_injection, checked, facts_squeezing = get_field_by_prev_rule(INJECTION, THROTTLE_RESPONSE,
+                                                                             SPEED_INJECTION, lines,
+                                                                             checked=checked)
+    # facts_squeezing = extract_water_volumes(text_act)
+
+    # print('количество продавок в тексте: ', len(facts_squeezing))
+    #
+    # print(facts_squeezing)
+    # for i, fact_squeezing in enumerate(facts_squeezing[:2]):
+    if len(facts_squeezing) > 0:
+        data[SQUEEZING_NAMES[1]].append(facts_squeezing[0].value)
+
     print(facts_speed_injection)
     # Приемистость скважины на 1-й скорости после закачки
     # Приемистость скважины на 2-й скорости после закачки

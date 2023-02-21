@@ -9,6 +9,47 @@ def extract_water_volumes(text):
     SQUEEZING = morph_pipeline(['продавить', 'продавка'])
     FRINGE = pipeline(['Оторочка'])
     STAGE = morph_pipeline(['композицию'])
+    THROTTLE = morph_pipeline(['приемистость'])
+    UNIT_VOLUME = rule(or_(DECIMAL, rule(INT)), morph_pipeline(['м3']))
+    parser = Parser(or_(UNIT_VOLUME, SQUEEZING, FRINGE, STAGE, THROTTLE), tokenizer=ID_TOKENIZER)
+    matches = parser.findall(tokens)
+    spans = [_.span for _ in matches]
+    print(spans)
+
+    def is_inside_span(token, span):
+        token_span = token.span
+        return span.start <= token_span.start and token_span.stop <= span.stop
+
+    def select_span_tokens(tokens, spans):
+        for token in tokens:
+            if any(is_inside_span(token, _) for _ in spans):
+                yield token
+
+    tokens = list(select_span_tokens(tokens, spans))
+    Squeezing_volume = fact(
+        'Squeezing_volume',
+        ['value']
+    )
+    SQUEEZING_VOLUMES = or_(
+        rule(or_(SQUEEZING, FRINGE), UNIT_VOLUME.interpretation(Squeezing_volume.value)),
+        rule(UNIT_VOLUME.interpretation(Squeezing_volume.value), THROTTLE)).interpretation(
+        Squeezing_volume)
+    parser = Parser(SQUEEZING_VOLUMES, tokenizer=ID_TOKENIZER)
+    matches = list(parser.findall(tokens))
+    facts = []
+    if matches:
+        for match in matches:
+            fact_feature = match.fact
+            facts.append(fact_feature)
+    return facts
+
+
+def extract_final_water_volumes(text):
+    tokens = list(TOKENIZER(text))
+    SQUEEZING = morph_pipeline(['продавить', 'продавка'])
+    FRINGE = pipeline(['Оторочка'])
+    STAGE = morph_pipeline(['композицию'])
+    THROTTLE = morph_pipeline(['приемистость'])
     UNIT_VOLUME = rule(or_(DECIMAL, rule(INT)), morph_pipeline(['м3']))
     parser = Parser(or_(UNIT_VOLUME, SQUEEZING, FRINGE, STAGE), tokenizer=ID_TOKENIZER)
     matches = parser.findall(tokens)
@@ -29,7 +70,7 @@ def extract_water_volumes(text):
         'Squeezing_volume',
         ['value']
     )
-    SQUEEZING_VOLUMES = rule(or_(SQUEEZING, FRINGE), UNIT_VOLUME.interpretation(Squeezing_volume.value)).interpretation(
+    SQUEEZING_VOLUMES = rule(UNIT_VOLUME.interpretation(Squeezing_volume.value), THROTTLE).interpretation(
         Squeezing_volume)
     parser = Parser(SQUEEZING_VOLUMES, tokenizer=ID_TOKENIZER)
     matches = list(parser.findall(tokens))

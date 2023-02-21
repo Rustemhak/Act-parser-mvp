@@ -126,7 +126,7 @@ def create_xlsx_mgsk(data_samples):
     # центрирование
     set_hor_center(sheet, full_table_range)
     format_percentage(sheet, full_table_range)
-    path_result = f'МГСК/МГСК.xlsx'
+    path_result = f'МГСК/МГСК-v2.xlsx'
     os.makedirs(os.path.dirname(path_result), exist_ok=True)
     book.save(path_result)
 

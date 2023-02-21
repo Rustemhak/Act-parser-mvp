@@ -60,3 +60,13 @@ def count_sum_volume(volumes):
     a = list(map(lambda v: v.replace('м3', ''), volumes))
     sum_volumes = sum(list(map(float, list(map(lambda v: v.replace('м3', '').replace(',', '.'), volumes)))))
     return f'{sum_volumes}м3'.replace('.', ',')
+
+
+def select_text_stages(text):
+    lines = text.split('\n')
+    i_stages = []
+    for i, line in enumerate(lines):
+        facts_stage = extract_volumes_feature_percents(line)
+        if (len(facts_stage)) > 0:
+            i_stages.append(i)
+    return i_stages
