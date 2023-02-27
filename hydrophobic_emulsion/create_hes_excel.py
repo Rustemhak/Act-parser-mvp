@@ -3,6 +3,8 @@ import logging
 import re
 import os
 from collections import defaultdict
+
+from hydrophobic_emulsion.hes_parser import get_HES
 from materials_from_table import extract_materials
 from act_from_table import reformat_table_11_17, format_table
 from merge_tables import merge_t
@@ -19,15 +21,13 @@ from itertools import chain
 from openpyxl.styles.numbers import FORMAT_PERCENTAGE
 
 FIELDS_TECH = ['Скважина', 'Приемистость скважины на 1-й скорости', 'Приемистость скважины на 2-й скорости',
-               'Приемистость скважины на 3-й скорости', 'Общий объем закачки МГС-К', 'Количество стадий закачки',
-               'Объем закачки на первой стадии', 'Объем закачки на второй стадии', 'концентрация ПАА на первой стадии',
-               'концентрация ПАА на второй стадии', 'концентрация ПАВ на первой стадии',
-               'концентрация ПАВ на второй стадии', 'концентрация СА (СКА) на первой стадии',
-               'концентрация СА (СКА) на второй стадии', 'концентрация ХКК на первой стадии',
-               'концентрация ХКК на второй стадии', 'Давление закачки', 'Объем продавки после первой фазы',
-               'Объем финальной продавки', 'Приемистость скважины на 1-й скорости после закачки',
+               'Приемистость скважины на 3-й скорости', 'Объем первичного раствора',
+               'Объем Нефтенола в первичном растворе',
+               'Объем воды в первичном растворе', 'Объем ГЭР', 'Концентрация ПАВ в ГЭР', 'Давление закачки',
+               'Объем продавки', 'Приемистость скважины на 1-й скорости после закачки',
                'Приемистость скважины на 2-й скорости после закачки',
-               'Приемистость скважины на 3-й скорости после закачки']
+               'Приемистость скважины на 3-й скорости после закачки',
+               'Время на реагирование']
 for i in range(1, 10):
     FIELDS_TECH += [f'Материал {i}', f'Плотность материала {i}', f'Количество материала {i}']
 FIELDS_TECH += ['Согласовано', 'Комментарий']
@@ -84,10 +84,10 @@ def format_percentage(ws, cell_range):
     for row in ws[cell_range]:
         for cell in row:
             value = str(cell.value)
-            if re.fullmatch(r'\d+[,.]?\d+%', value):
+            if re.fullmatch(r'\d+([,.]\d+)?%', value):
                 cell.value = value.replace(',', '.')
                 cell.number_format = FORMAT_PERCENTAGE
-                #cell.value = value.replace('.', ',')
+                # cell.value = value.replace('.', ',')
 
 
 def set_hor_center(ws, cell_range):
@@ -96,7 +96,7 @@ def set_hor_center(ws, cell_range):
             cell.alignment = Alignment(horizontal='center')
 
 
-def create_xlsx_mgsk(data_samples):
+def create_xlsx_hes(data_samples):
     data_samples = dict(zip(data_samples.keys(), list(map(lambda x: list(map(format_data, x)), data_samples.values()))))
     # создаю книгу
     book = openpyxl.Workbook()
@@ -126,7 +126,7 @@ def create_xlsx_mgsk(data_samples):
     # центрирование
     set_hor_center(sheet, full_table_range)
     format_percentage(sheet, full_table_range)
-    path_result = f'МГСК/МГСК-v3.xlsx'
+    path_result = f'ГЭР/ГЭР-v1.xlsx'
     os.makedirs(os.path.dirname(path_result), exist_ok=True)
     book.save(path_result)
 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
         for file in files:
             if file.lower().endswith('.pdf'):
                 path_file = os.path.join(root, file)
-                data = get_MGSK(data, path_file)
+                data = get_HES(data, path_file)
                 """
                 материалы из таблицы
                 """
@@ -161,4 +161,4 @@ if __name__ == "__main__":
                 # break_idx += 1
                 # if break_idx > 20:
                 #     break
-    create_xlsx_mgsk(data)
+    create_xlsx_hes(data)

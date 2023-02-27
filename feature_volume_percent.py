@@ -1,6 +1,8 @@
 from yargy.interpretation import fact
 from yargy.pipelines import morph_pipeline, pipeline
 from yargy import rule, and_, Parser, or_
+from yargy.predicates import eq
+
 from yargy_utils import TOKENIZER, ID_TOKENIZER, DECIMAL, PERCENT, INT
 
 
@@ -18,7 +20,7 @@ def extract_volumes_feature_percents(text):
     FRINGE = pipeline(['оторочка'])
     VOLUME = morph_pipeline(['объём'])
     UNIT_VOLUME = rule(or_(DECIMAL, rule(INT)), morph_pipeline(['м3']))
-    UNIT_PERCENT = rule(DECIMAL, PERCENT)
+    UNIT_PERCENT = rule(DECIMAL, rule(eq('-'), DECIMAL).optional().repeatable(), PERCENT)
     parser = Parser(or_(STAGE, VOLUME, SHORT_FEATURE, UNIT_VOLUME, UNIT_PERCENT, rule(INT, FRINGE)),
                     tokenizer=ID_TOKENIZER)
     matches = parser.findall(tokens)
