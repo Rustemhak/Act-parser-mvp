@@ -2,8 +2,10 @@ from openpyxl.reader.excel import load_workbook
 from openpyxl.styles import Font, PatternFill
 
 redFill = PatternFill(start_color='ffb3b9',
-                   end_color='ffb3b9',
-                   fill_type='solid')
+                      end_color='ffb3b9',
+                      fill_type='solid')
+
+
 def get_header(from_algo, benchmark):
     result = []
     algo_headers = list(from_algo.values)[0]
@@ -48,12 +50,12 @@ def clean_text(string: str) -> str:
 def set_color(ws, cell_range, boolean_matrix):
     for i, row in enumerate(ws[cell_range]):
         for j, cell in enumerate(row):
-            if  not boolean_matrix[i][j]:
+            if not boolean_matrix[i][j]:
                 cell.fill = redFill
 
 
 def colored_cells(ws, boolean_matrix):
-    set_color(ws, "A1:AR85", boolean_matrix)
+    set_color(ws, "A2:AR85", boolean_matrix)
 
 
 def comparison(path_from_algo, path_benchmark, log=False):
@@ -106,11 +108,13 @@ def comparison(path_from_algo, path_benchmark, log=False):
 
 
 if __name__ == '__main__':
-    res = comparison('ГЭР-v1.xlsx', "таблица Гидрофобная_эмульсия.xlsx", log=True)
-    for row in res:
-        print(row)
-    wb = load_workbook('ГЭР-v1.xlsx')
+    res = comparison('ГЭР-v2.xlsx', "таблица Гидрофобная_эмульсия.xlsx", log=True)
+
+    # print(res)
+    # for row in res:
+    #     print(row)
+    wb = load_workbook('ГЭР-v2.xlsx')
     table_from_algo = wb['Лист1']
     colored_cells(table_from_algo, res)
-    wb.save('ГЭР-v1.xlsx')
+    wb.save('ГЭР-v2.xlsx')
     # print(f'{clean_text("0.005%")} == {clean_text("5e-05")} is {clean_text("0.005%") == clean_text("5e-05")}')

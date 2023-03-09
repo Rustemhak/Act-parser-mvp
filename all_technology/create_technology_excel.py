@@ -4,7 +4,7 @@ import re
 import os
 from collections import defaultdict
 
-from hydrophobic_emulsion.hes_parser import get_HES
+from all_technology.all_techology_parser import get_technology
 from materials_from_table import extract_materials
 from act_from_table import reformat_table_11_17, format_table
 from merge_tables import merge_t
@@ -21,14 +21,12 @@ from itertools import chain
 from openpyxl.styles.numbers import FORMAT_PERCENTAGE
 
 FIELDS_TECH = ['Скважина', 'Приемистость скважины на 1-й скорости', 'Приемистость скважины на 2-й скорости',
-               'Приемистость скважины на 3-й скорости', 'Объем первичного раствора',
-               'Объем Нефтенола в первичном растворе',
-               'Объем воды в первичном растворе', 'Объем ГЭР', 'Концентрация ПАВ в ГЭР', 'Давление закачки',
-               'Объем продавки', 'Приемистость скважины на 1-й скорости после закачки',
+               'Приемистость скважины на 3-й скорости',
+               'Приемистость скважины на 1-й скорости после закачки',
                'Приемистость скважины на 2-й скорости после закачки',
-               'Приемистость скважины на 3-й скорости после закачки',
-               'Время на реагирование']
-for i in range(1, 10):
+               'Приемистость скважины на 3-й скорости после закачки'
+               ]
+for i in range(1, 12):
     FIELDS_TECH += [f'Материал {i}', f'Плотность материала {i}', f'Количество материала {i}']
 FIELDS_TECH += ['Согласовано', 'Комментарий']
 
@@ -96,7 +94,7 @@ def set_hor_center(ws, cell_range):
             cell.alignment = Alignment(horizontal='center')
 
 
-def create_xlsx_hes(data_samples):
+def create_xlsx_hes(data_samples, type_technology):
     data_samples = dict(zip(data_samples.keys(), list(map(lambda x: list(map(format_data, x)), data_samples.values()))))
     # создаю книгу
     book = openpyxl.Workbook()
@@ -121,12 +119,12 @@ def create_xlsx_hes(data_samples):
         sheet.append(values)
         # записываю данные в строки таблицы
     set_width_custom(sheet)
-    full_table_range = f"A1:AY{len(data_samples['Скважина']) + 1}"
+    full_table_range = f"A1:AP{len(data_samples['Скважина']) + 1}"
     set_border(sheet, full_table_range)
     # центрирование
     set_hor_center(sheet, full_table_range)
     format_percentage(sheet, full_table_range)
-    path_result = f'ГЭР/ГЭР-v2.xlsx'
+    path_result = f'Таблицы всех типо технологий/{type_technology}.xlsx'
     os.makedirs(os.path.dirname(path_result), exist_ok=True)
     book.save(path_result)
 
@@ -134,16 +132,21 @@ def create_xlsx_hes(data_samples):
 if __name__ == "__main__":
     with open('path_directory.txt', encoding='utf-8', mode='r') as f:
         directory = f.readline()
-    data = defaultdict(list)
-    for field, idx in zip(FIELDS_TECH, list(range(1, len(FIELDS_TECH) + 1))):
-        data[field].append(idx)
-    print(data)
-    break_idx = 0
+
+    # print(data)
+    technology_id = -2
+    first_dirs = []
     for root, dirs, files in os.walk(directory):
+        if technology_id == -2:
+            first_dirs += dirs
+        technology_id += 1
+        data = defaultdict(list)
+        for field, idx in zip(FIELDS_TECH, list(range(1, len(FIELDS_TECH) + 1))):
+            data[field].append(idx)
         for file in files:
             if file.lower().endswith('.pdf'):
                 path_file = os.path.join(root, file)
-                data = get_HES(data, path_file)
+                data = get_technology(data, path_file)
                 """
                 материалы из таблицы
                 """
@@ -154,11 +157,13 @@ if __name__ == "__main__":
                     material_new = replace_empty_to_not_find(material)
                     data[f'Материал {idx}'].append(material_new[0])
                     data[f'Плотность материала {idx}'].append(material_new[1])
-                    data[f'Количество материала {idx}'].append(material_new[2])
+                    if len(material_new) > 2:
+                        data[f'Количество материала {idx}'].append(material_new[2])
                 for i, k in enumerate(data.keys()):
                     if len(data[k]) < len(data['Скважина']):
                         data[k].append('н/д')
                 # break_idx += 1
                 # if break_idx > 20:
                 #     break
-    create_xlsx_hes(data)
+        if technology_id >= 0:
+            create_xlsx_hes(data, first_dirs[technology_id])

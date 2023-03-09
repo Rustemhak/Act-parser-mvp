@@ -131,7 +131,7 @@ def check_volumes_solution(volumes):
     return volumes.solution_value == count_sum_volume([volumes.neftenol_value, volumes.water_value])
 
 
-def get_HES(data, path):
+def get_technology(data, path):
     # Чтение
     pdf = pdfplumber.open(path)
     pages = pdf.pages
@@ -184,27 +184,6 @@ def get_HES(data, path):
     for fact_speed_throttle_response in facts_speed_throttle_response:
         if fact_speed_throttle_response.field_name[0] == '3':
             data["Приемистость скважины на 3-й скорости"].append(fact_speed_throttle_response.value)
-
-    # Давление закачки
-    INJECTION_PRESSURE_SIGN = morph_pipeline(['Рзак='])
-    PRESSURE_UNIT = rule(rule(INT, eq('-')).repeatable().optional(), INT, morph_pipeline(['атм']))
-    Injection_pressure = fact('Injection_pressure',
-                              ['field_name', 'value']
-                              )
-    INJECTION_PRESSURE = rule(INJECTION_PRESSURE_SIGN.interpretation(Injection_pressure.field_name),
-                              PRESSURE_UNIT.interpretation(Injection_pressure.value)).interpretation(Injection_pressure)
-    fact_injection_pressure = get_field_value(INJECTION_PRESSURE, text_act)
-    if fact_injection_pressure is not None:
-        data['Давление закачки'].append(fact_injection_pressure.value)
-
-    # Общий объем закачки  МГС-К
-    # после закачки
-    """
-    Объем  продавки
-    """
-    SQUEEZING_NAMES = ['Объем продавки после первой фазы',
-                       'Объем продавки']
-
     """
     Вторые скорости
     """
@@ -228,8 +207,6 @@ def get_HES(data, path):
     #
     # print(facts_squeezing)
     # for i, fact_squeezing in enumerate(facts_squeezing[:2]):
-    if len(facts_squeezing) > 0:
-        data[SQUEEZING_NAMES[1]].append(facts_squeezing[0].value)
 
     print(facts_speed_injection)
     # Приемистость скважины на 1-й скорости после закачки
@@ -260,43 +237,12 @@ def get_HES(data, path):
     else:
         data['Согласовано'].append('Нет')
 
-    """
-    Объем первичного раствора	Объем Нефтенола в первичном растворе	Объем воды в первичном растворе
-    """
-    volumes = extract_solution_volumes(text_act)
-    if volumes:
-        data['Объем первичного раствора'].append(volumes.solution_value)
-        data['Объем Нефтенола в первичном растворе'].append(volumes.neftenol_value)
-        data['Объем воды в первичном растворе'].append(volumes.water_value)
-        if not check_volumes_solution(volumes):
-            data['Комментарий'].append('Опечатка в объёме составляющих раствора')
-    """
-    Объем ГЭР	Концентрация ПАВ в ГЭР
-    """
-    hes_volume_percent = extract_hes(text_act)
-    if hes_volume_percent:
-        data['Объем ГЭР'].append(hes_volume_percent.volume_value)
-        data['Концентрация ПАВ в ГЭР'].append(hes_volume_percent.percent_value)
-    """
-    Время на реагирование
-    """
-    time_reaction = extract_time_reaction(text_act)
-    if time_reaction:
-        pretty_time = ''
-        if time_reaction.time_value.hours:
-            pretty_time += str(time_reaction.time_value.hours) + ' часа '
-        if time_reaction.time_value.minutes:
-            pretty_time += str(time_reaction.time_value.hours) + ' мин '
-        if time_reaction.time_value.seconds:
-            pretty_time += str(time_reaction.time_value.hours) + ' сек '
-
-        data['Время на реагирование'].append(pretty_time)
     return data
 
 
 if __name__ == '__main__':
     path = 'AKT_KRS_2198_АН.pdf'
     data = defaultdict(list)
-    data = get_HES(data, path)
+    data = get_technology(data, path)
     df = pd.DataFrame(data=data)
     df.to_excel("таблица_ГЭР.xlsx")
