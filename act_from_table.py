@@ -3,6 +3,7 @@ import logging
 import re
 
 from merge_tables import merge_t
+from table_utils.fix_table import fix_perforation
 
 logging.basicConfig(filename='myapp.log', filemode='w', level=logging.DEBUG)
 
@@ -58,7 +59,9 @@ def get_values_8_10(pdf_file):
     cv.close()
 
     # for table in tables:
-    #     print(table)
+    #     for row in table:
+    #         print(row)
+    #     print('\n-----------------\n')
     """
     Вид работы
     Метод работы
@@ -82,17 +85,27 @@ def get_values_8_10(pdf_file):
             logging.warning(f'Не найдено значение {dict_id_fields[i]} в акте {pdf_file}')
 
     data_8_10 = dict(zip(FIELDS_8_10, values_8_10))
+
     # таблица ПЕРФОРАЦИЯ, ОТКЛЮЧЕНИЕ ПЛАСТОВ
     if len(tables) > 5:
-        table18_28 = tables[5]
+        tabl = tables[5]
+        if tabl[0] == ['В и д', '<NEST TABLE>', 'Горизонт', 'Пласт', 'Интервал, м', None, 'Перфоратор',
+                       'Назначение перфорации', 'Расч.пл отность отв/м', 'Накоп.к ол-во отв']:
+            table18_28 = fix_perforation(tabl)
+
+        else:
+            table18_28 = tabl
         pass
+
     else:
         logging.warning(f'Не найдена таблица ПЕРФОРАЦИЯ, ОТКЛЮЧЕНИЕ ПЛАСТОВ на страницах в {pdf_file}')
         table18_28 = [[]]
+
     # РАСХОД МАТЕРИАЛОВ, ИСПОЛЬЗУЕМЫХ ПРИ РЕМОНТЕ
     if len(tables) > 6:
         table11_17 = tables[6]
         pass
+
     else:
         logging.warning(f'РАСХОД МАТЕРИАЛОВ, ИСПОЛЬЗУЕМЫХ ПРИ РЕМОНТЕ СКВАЖИНЫ на страницах в {pdf_file}')
         table11_17 = [[]]
@@ -100,18 +113,23 @@ def get_values_8_10(pdf_file):
     if len(table18_28[1]) < 11:
         table18_28 = table18_28[:2] + list(
             map(lambda x: x[0].split(maxsplit=1) + x[1:], table18_28[2:]))
+
     if 'Код вида' not in table11_17[0][0]:
         table18_28 = table18_28 + table11_17
+
         if len(tables) > 7:
             table11_17 = tables[7]
+
         else:
             logging.warning(f'Не найдена таблица РАСХОД МАТЕРИАЛОВ, ИСПОЛЬЗУЕМЫХ ПРИ РЕМОНТЕ СКВАЖИНЫ\
                             на страницах, \
                 а таблица ПЕРФОРАЦИЯ, ОТКЛЮЧЕНИЕ ПЛАСТОВ на страницах в {pdf_file}')
             table11_17 = [[]]
+
     if len(table11_17) > 1 and len(table11_17[1]) < 9 and table11_17[1][0] != '<NEST TABLE>':
         table11_17 = table11_17[:1] + list(
             map(lambda x: x[0].split(maxsplit=1) + x[1:], table11_17[1:]))
+
     table18_28 = reformat_table_18_28(table18_28, pdf_file)
     table11_17 = reformat_table_11_17(table11_17)
     table18_28 = format_table(table18_28)
