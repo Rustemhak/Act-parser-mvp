@@ -14,21 +14,23 @@ def extract_materials(pdf_file):
     cv.close()
     # print('количество таблиц',len(tables))
     # print(tables[5])
-    tables_materials = tables[6]
-    tables_materials = reformat_table_11_17(tables_materials)
-    tables_materials = format_table(tables_materials)
-    materials = []
-    for line in tables_materials[1:]:
-        materials.append(line[2:4] + line[5:6])
-    return materials
+    if len(tables) > 6:
+        tables_materials = tables[6]
+        tables_materials = reformat_table_11_17(tables_materials)
+        tables_materials = format_table(tables_materials)
+        materials = []
+        for line in tables_materials[1:]:
+            materials.append(line[2:4] + line[5:6])
+        return materials
+    return
 
 
 if __name__ == "__main__":
-    with open('path_directory.txt', encoding='utf-8', mode='r') as f:
+    with open("path_directory.txt", encoding="utf-8", mode="r") as f:
         directory = f.readline()
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if file.lower().endswith('.pdf'):
+            if file.lower().endswith(".pdf"):
                 path_file = os.path.join(root, file)
 
                 extract_materials(path_file)

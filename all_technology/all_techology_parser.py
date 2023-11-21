@@ -2,17 +2,26 @@ import pdfplumber
 from yargy.interpretation import fact
 from yargy.pipelines import morph_pipeline
 from yargy import rule, and_, Parser, or_
-from yargy.predicates import is_capitalized, gte, lte, eq
 from collections import defaultdict
 import pandas as pd
-
-from hydrophobic_emulsion.hes_volume_percent import extract_hes
-from hydrophobic_emulsion.time_reaction import extract_time_reaction
-from hydrophobic_emulsion.volumes import extract_solution_volumes
-from yargy_utils import NUMERO_SIGN, INT, show_json, ADJF, SLASH, COLON, TOKENIZER, ADJS, DECIMAL, PERCENT
-from feature_volume_percent import extract_volumes_feature_percents, count_sum_volume, select_text_stages
+from yargy_utils import (
+    NUMERO_SIGN,
+    INT,
+    show_json,
+    ADJF,
+    SLASH,
+    COLON,
+    TOKENIZER,
+    ADJS,
+    DECIMAL,
+    PERCENT,
+)
+from feature_volume_percent import (
+    extract_volumes_feature_percents,
+    count_sum_volume,
+    select_text_stages,
+)
 from water_squeezing import extract_water_volumes, extract_final_water_volumes
-from yargy_utils.duration import DURATION
 
 
 class Match(object):
@@ -38,7 +47,7 @@ class Extractor(object):
         right_matches = self.right_parser.findall(line)
         right_spans = [_.span for _ in right_matches]
         if left_spans and right_spans:
-            return line[left_spans[0].stop:right_spans[0].start].strip()
+            return line[left_spans[0].stop : right_spans[0].start].strip()
 
 
 def show_from_act(my_rule, lines):
@@ -66,12 +75,14 @@ def get_field_value_second(my_rule, lines):
         match = list(parser.findall(line))
         if line is not None and len(line) and len(match):
             fact = match[0].fact
-            fact.value = line.replace(fact.field_name, '').strip(' .')
+            fact.value = line.replace(fact.field_name, "").strip(" .")
             ## print('fact', fact)
             return fact
 
 
-def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forward=4, checked=None):
+def get_field_by_prev_rule(
+    def_rule, extra_def_rule, val_rule, lines, idx_forward=4, checked=None
+):
     parser = Parser(def_rule)
     extra_parser = Parser(extra_def_rule)
     idx_val = None
@@ -79,7 +90,9 @@ def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forwar
         line = line.strip()
         match = list(parser.findall(line))
         extra_match = list(extra_parser.findall(line))
-        if line is not None and len(line) and len(extra_match) and i not in checked:  # and  len(match)
+        if (
+            line is not None and len(line) and len(extra_match) and i not in checked
+        ):  # and  len(match)
             idx_val = i
             break
     parser = Parser(val_rule)
@@ -92,18 +105,20 @@ def get_field_by_prev_rule(def_rule, extra_def_rule, val_rule, lines, idx_forwar
     for idx in range(idx_val + 1, idx_val + idx_forward + 1):
         line = lines[idx].strip()
         # замена английской c на русскую с
-        line = line.replace('c', 'с')
+        line = line.replace("c", "с")
         match = list(parser.findall(line))
         if line is not None and len(line) and len(match):
             fact_local = match[0].fact
-            fact_local.value = line.replace(fact_local.field_name, '').strip(' .')
+            fact_local.value = line.replace(fact_local.field_name, "").strip(" .")
             ## print('fact', fact)
             facts.append(fact_local)
     facts_volume_final = extract_water_volumes(lines[idx_val])
     return facts, checked, facts_volume_final
 
 
-def get_field_by_prev_rule_with_value(def_rule, val_rules, lines, checked, idx_forward=1):
+def get_field_by_prev_rule_with_value(
+    def_rule, val_rules, lines, checked, idx_forward=1
+):
     parser = Parser(def_rule)
     idx_val = None
     for i, line in enumerate(lines):
@@ -128,79 +143,85 @@ def get_field_by_prev_rule_with_value(def_rule, val_rules, lines, checked, idx_f
 
 
 def check_volumes_solution(volumes):
-    return volumes.solution_value == count_sum_volume([volumes.neftenol_value, volumes.water_value])
+    return volumes.solution_value == count_sum_volume(
+        [volumes.neftenol_value, volumes.water_value]
+    )
 
 
 def get_technology(data, path):
     # Чтение
     pdf = pdfplumber.open(path)
     pages = pdf.pages
-    text_act = '\n'.join([page.extract_text(
-        layout=True,
-        use_text_flow=True) for page in pages])
-    lines = text_act.split('\n')
+    text_act = "\n".join(
+        [page.extract_text(layout=True, use_text_flow=True) for page in pages]
+    )
+    lines = text_act.split("\n")
     print(text_act)
     # Скважина
-    WELL_WORD = morph_pipeline(['Скв'])
-    Well = fact(
-        'Well',
-        ['field_name', 'value']
-    )
-    WELL = rule(rule(WELL_WORD, NUMERO_SIGN).interpretation(Well.field_name)).interpretation(Well)
+    WELL_WORD = morph_pipeline(["Скв"])
+    Well = fact("Well", ["field_name", "value"])
+    WELL = rule(
+        rule(WELL_WORD, NUMERO_SIGN).interpretation(Well.field_name)
+    ).interpretation(Well)
     result = get_field_value_second(WELL, lines)
-    data["Скважина"].append(result.value)
+    try:
+        data["Скважина"].append(result.value)
+    except:
+        data["Скважина"].append("н/д")
     # Скорости насыщения
-    SATURATION = morph_pipeline(['насытить', 'продавить'])
-    THROTTLE_RESPONSE = morph_pipeline(['приемистость'])
+    SATURATION = morph_pipeline(["насытить", "продавить"])
+    THROTTLE_RESPONSE = morph_pipeline(["приемистость"])
 
-    Speed_Throttle_response = fact(
-        'Speed_Throttle_response',
-        ['field_name', 'value']
-    )
-    NUMBER_SPEED = morph_pipeline(['1', '2', '3'])
-    SPEED = morph_pipeline(['скорость'])
+    Speed_Throttle_response = fact("Speed_Throttle_response", ["field_name", "value"])
+    NUMBER_SPEED = morph_pipeline(["1", "2", "3"])
+    SPEED = morph_pipeline(["скорость"])
     SPEED_THROTTLE_RESPONSE = rule(
-        rule(NUMBER_SPEED, SPEED, COLON).interpretation(Speed_Throttle_response.field_name)).interpretation(
-        Speed_Throttle_response)
-    print('path:', path)
+        rule(NUMBER_SPEED, SPEED, COLON).interpretation(
+            Speed_Throttle_response.field_name
+        )
+    ).interpretation(Speed_Throttle_response)
+    print("path:", path)
     checked = []
-    facts_speed_throttle_response, checked, _ = get_field_by_prev_rule(SATURATION, THROTTLE_RESPONSE,
-                                                                       SPEED_THROTTLE_RESPONSE,
-                                                                       lines, checked=checked)
+    facts_speed_throttle_response, checked, _ = get_field_by_prev_rule(
+        SATURATION, THROTTLE_RESPONSE, SPEED_THROTTLE_RESPONSE, lines, checked=checked
+    )
     if len(facts_speed_throttle_response) == 0:
         data["Комментарий"].append("Скорости не найдены - описание сильно отличается")
     # Приемистость скважины на 1-й скорости
     for fact_speed_throttle_response in facts_speed_throttle_response:
-        if fact_speed_throttle_response.field_name[0] == '1':
-            data["Приемистость скважины на 1-й скорости"].append(fact_speed_throttle_response.value)
+        if fact_speed_throttle_response.field_name[0] == "1":
+            data["Приемистость скважины на 1-й скорости"].append(
+                fact_speed_throttle_response.value
+            )
             break
 
     # Приемистость скважины на 2-й скорости
     for fact_speed_throttle_response in facts_speed_throttle_response:
-        if fact_speed_throttle_response.field_name[0] == '2':
-            data["Приемистость скважины на 2-й скорости"].append(fact_speed_throttle_response.value)
+        if fact_speed_throttle_response.field_name[0] == "2":
+            data["Приемистость скважины на 2-й скорости"].append(
+                fact_speed_throttle_response.value
+            )
             break
     # Приемистость скважины на 3-й скорости
     for fact_speed_throttle_response in facts_speed_throttle_response:
-        if fact_speed_throttle_response.field_name[0] == '3':
-            data["Приемистость скважины на 3-й скорости"].append(fact_speed_throttle_response.value)
+        if fact_speed_throttle_response.field_name[0] == "3":
+            data["Приемистость скважины на 3-й скорости"].append(
+                fact_speed_throttle_response.value
+            )
     """
     Вторые скорости
     """
-    INJECTION = morph_pipeline(['продавить', 'приемистость'])
-    THROTTLE_RESPONSE = morph_pipeline(['приемистость'])
-    Speed_injection = fact(
-        'Speed_injection',
-        ['field_name', 'value']
-    )
-    NUMBER_SPEED = morph_pipeline(['1', '2', '3'])
-    SPEED = morph_pipeline(['скорость'])
+    INJECTION = morph_pipeline(["продавить", "приемистость"])
+    THROTTLE_RESPONSE = morph_pipeline(["приемистость"])
+    Speed_injection = fact("Speed_injection", ["field_name", "value"])
+    NUMBER_SPEED = morph_pipeline(["1", "2", "3"])
+    SPEED = morph_pipeline(["скорость"])
     SPEED_INJECTION = rule(
-        rule(NUMBER_SPEED, SPEED, COLON).interpretation(Speed_injection.field_name)).interpretation(
-        Speed_injection)
-    facts_speed_injection, checked, facts_squeezing = get_field_by_prev_rule(INJECTION, THROTTLE_RESPONSE,
-                                                                             SPEED_INJECTION, lines,
-                                                                             checked=checked)
+        rule(NUMBER_SPEED, SPEED, COLON).interpretation(Speed_injection.field_name)
+    ).interpretation(Speed_injection)
+    facts_speed_injection, checked, facts_squeezing = get_field_by_prev_rule(
+        INJECTION, THROTTLE_RESPONSE, SPEED_INJECTION, lines, checked=checked
+    )
     # facts_squeezing = extract_water_volumes(text_act)
 
     # print('количество продавок в тексте: ', len(facts_squeezing))
@@ -213,35 +234,41 @@ def get_technology(data, path):
     # Приемистость скважины на 2-й скорости после закачки
     # Приемистость скважины на 3-й скорости после закачки
     for fact_speed_injection in facts_speed_injection:
-        if fact_speed_injection.field_name[0] == '1':
-            data["Приемистость скважины на 1-й скорости после закачки"].append(fact_speed_injection.value)
+        if fact_speed_injection.field_name[0] == "1":
+            data["Приемистость скважины на 1-й скорости после закачки"].append(
+                fact_speed_injection.value
+            )
             break
 
     # Приемистость скважины на 2-й скорости
     for fact_speed_injection in facts_speed_injection:
-        if fact_speed_injection.field_name[0] == '2':
-            data["Приемистость скважины на 2-й скорости после закачки"].append(fact_speed_injection.value)
+        if fact_speed_injection.field_name[0] == "2":
+            data["Приемистость скважины на 2-й скорости после закачки"].append(
+                fact_speed_injection.value
+            )
             break
     # Приемистость скважины на 3-й скорости
     for fact_speed_injection in facts_speed_injection:
-        if fact_speed_injection.field_name[0] == '3':
-            data["Приемистость скважины на 3-й скорости после закачки"].append(fact_speed_injection.value)
+        if fact_speed_injection.field_name[0] == "3":
+            data["Приемистость скважины на 3-й скорости после закачки"].append(
+                fact_speed_injection.value
+            )
             break
 
     # Согласовано
-    AGREED = morph_pipeline(['Cогласовано', 'по согласованию'])
+    AGREED = morph_pipeline(["Cогласовано", "по согласованию"])
     parser_agreed = Parser(AGREED)
     matches = list(parser_agreed.findall(text_act))
     if len(matches) > 0:
-        data['Согласовано'].append('Да')
+        data["Согласовано"].append("Да")
     else:
-        data['Согласовано'].append('Нет')
+        data["Согласовано"].append("Нет")
 
     return data
 
 
-if __name__ == '__main__':
-    path = 'AKT_KRS_2198_АН.pdf'
+if __name__ == "__main__":
+    path = "AKT_KRS_2198_АН.pdf"
     data = defaultdict(list)
     data = get_technology(data, path)
     df = pd.DataFrame(data=data)
